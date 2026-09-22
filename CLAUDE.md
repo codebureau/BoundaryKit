@@ -22,8 +22,8 @@ Hardening is the primary control; the monitor is the detective/backstop layer. A
 - **Never apply policy changes to the machine you are running on.** No `gpedit`/`secedit`/`LGPO`, AppLocker, registry, Defender, Edge-policy, or account changes on the dev box. Express them as reviewable, reversible artifacts in the repo (exported policy, `.reg`/PowerShell scripts, JSON policy files) and let Matt apply them on the target PC.
 - **Every restriction needs a documented rollback and must leave the parent admin account able to undo it.** Lockout risk is the main way this project can go wrong (disabling PowerShell/CMD/Registry Editor/Task Manager, AppLocker default-deny rules). Prefer audit-mode/test rollout before enforcement.
 - **Code is read by a learner.** Prefer plain, well-named C# over clever abstractions; the secondary goal is teaching (event-driven programming, Windows internals, threat modelling).
-- **The README's "Notes & Decisions" section is the decision log.** Record design decisions, policy choices, test results and bypasses found as short dated entries there. Don't create a heavier ADR structure unless the log outgrows it.
-- No directory layout for scripts/policies/source has been chosen yet. The first Architect pass should decide one and record it in Notes & Decisions.
+- **Significant design/policy/architecture decisions are ADRs in [`docs/adr/`](docs/adr/)** — `NNNN-title.md`, Context/Decision/Consequences, lighter-weight than a full spec (see [`docs/adr/0001-mvp1-scope-and-critical-path.md`](docs/adr/0001-mvp1-scope-and-critical-path.md) for the format and the current MVP1 scope). The README's "Notes & Decisions" section is only for lighter running notes that don't warrant a full ADR — testing results, issues found, improvements made.
+- No directory layout for scripts/policies/source has been chosen yet. The first Architect pass should decide one and record it as an ADR.
 
 ## Git workflow
 
