@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git checkout *)",
+      "Bash(git fetch *)",
+      "Bash(git branch *)",
+      "Bash(git worktree *)",
+      "Bash(git pull *)",
+      "Bash(dotnet build*)",
+      "Bash(dotnet test*)",
+      "Bash(dotnet format*)",
+      "Bash(dotnet restore*)",
+      "Bash(gh pr view*)",
+      "Bash(gh pr review*)",
+      "Bash(gh pr ready*)",
+      "Bash(gh pr checks*)",
+      "Bash(gh pr diff*)",
+      "Bash(gh issue view*)",
+      "PowerShell(git status*)",
+      "PowerShell(git diff*)",
+      "PowerShell(git log*)",
+      "PowerShell(git show*)",
+      "PowerShell(git fetch *)",
+      "PowerShell(git worktree *)",
+      "PowerShell(dotnet build*)",
+      "PowerShell(dotnet test*)",
+      "PowerShell(dotnet format*)",
+      "PowerShell(dotnet restore*)"
+    ],
+    "deny": [
+      "Bash(gh pr merge*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git push --no-verify*)",
+      "Bash(git commit --no-verify*)",
+      "Bash(git commit -n*)",
+      "PowerShell(gh pr merge*)",
+      "PowerShell(git push --force*)",
+      "PowerShell(git push -f*)",
+      "PowerShell(git commit --no-verify*)",
+      "PowerShell(git commit -n*)"
+    ]
+  }
+}
