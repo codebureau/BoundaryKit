@@ -34,10 +34,11 @@ Hardening is the primary control; the monitor is the detective/backstop layer. A
 
 ## Multi-agent roles
 
-Work is split into three role agents in [.claude/agents/](.claude/agents/): `architect` (design, threat model, decision log — no source edits), `developer` (implements; hard-stops before git), and `tester` (independently verifies a draft PR — no source edits).
+Work is split into four role agents in [.claude/agents/](.claude/agents/): `product-manager` (backlog: turns the README's checklist/phases into GitHub issues, scope, priority — no code), `architect` (design, threat model, decision log — no source edits), `developer` (implements; hard-stops before git), and `tester` (independently verifies a draft PR — no source edits).
 
 - **Only invoke a role when Matt asks for it.** You may suggest that a pass looks warranted; never spin one up unannounced, and roles never invoke each other.
-- Developer/Architect/Tester passes are launched with the Agent tool's `isolation: "worktree"`. Claude provisions the worktree; the role agent works inside it and doesn't create its own. After the branch merges, Claude fast-forwards `main` and removes the worktree and local branch.
-- Reports come in two messages: the substantive report (what was built/decided/verified, with real command output) *before* any commit/PR/ready action, then a short "PR opened / marked ready" message afterwards.
+- Developer/Architect/Tester passes are launched with the Agent tool's `isolation: "worktree"`. Claude provisions the worktree; the role agent works inside it and doesn't create its own. After the branch merges, Claude fast-forwards `main` and removes the worktree and local branch. Product Manager doesn't need one — it works against GitHub issues and small README-checklist edits directly.
+- Reports come in two messages: the substantive report (what was built/decided/verified, with real command output) *before* any commit/PR/ready/issue-creation action, then a short confirmation message afterwards.
 - Developer and Tester reports always include copy-pasteable manual-test steps for Matt.
 - A Tester pass is never a substitute for Matt's review.
+- Product Manager labels issues `type:` (`feature`/`task`/`bug`/`chore`/`docs`) and `area:` (`os-hardening`/`browser`/`monitor`/`account`/`testing`), plus `needs-design` to flag a task for an Architect pass before Developer starts.
