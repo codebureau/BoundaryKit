@@ -1,0 +1,26 @@
+Windows Registry Editor Version 5.00
+
+; BoundaryKit - rollback for edge-policies.reg / apply-edge-policies.ps1
+;
+; Removes exactly the values that edge-policies.reg / apply-edge-policies.ps1 set,
+; returning each policy to "Not Configured" (ordinary Edge default behaviour).
+; Does NOT delete the parent Edge policy key itself, only these specific values and
+; the ExtensionInstallBlocklist subkey - safe even if other tooling later adds
+; unrelated Edge policies under the same key.
+;
+; Requires: importing as Administrator (this writes to HKEY_LOCAL_MACHINE).
+; Affects Edge browser policy only - never touches Windows accounts or sign-in.
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge]
+"DownloadRestrictions"=-
+"DeveloperToolsAvailability"=-
+"InPrivateModeAvailability"=-
+"ForceBingSafeSearch"=-
+"ForceGoogleSafeSearch"=-
+"SmartScreenEnabled"=-
+"SmartScreenPuaEnabled"=-
+"BrowserSignin"=-
+"BrowserGuestModeEnabled"=-
+"BrowserAddProfileEnabled"=-
+
+[-HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallBlocklist]

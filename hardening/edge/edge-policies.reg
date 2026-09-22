@@ -1,0 +1,49 @@
+Windows Registry Editor Version 5.00
+
+; BoundaryKit - Microsoft Edge hardening policies (GitHub issue #35, sub-issues #36-#38)
+;
+; Equivalent, double-click-importable alternative to apply-edge-policies.ps1.
+; Both write the same values to the same key; prefer the .ps1 for a -WhatIf dry run,
+; use this .reg when a reviewable double-click import is more convenient.
+;
+; Excludes (deferred, see docs/adr/0001-mvp1-scope-and-critical-path.md):
+;   - Force Family Safety mode
+;   - Website allow/deny list
+;
+; Rollback: import edge-policies-rollback.reg (or run rollback-edge-policies.ps1).
+; Requires: importing as Administrator (this writes to HKEY_LOCAL_MACHINE).
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge]
+; --- #36: downloads, dev tools, extensions, InPrivate mode ---
+; DownloadRestrictions: 2 = BlockPotentiallyDangerousDownloads (Matt confirmed 2026-09-22 -
+; ordinary downloads like homework PDFs go through; SmartScreen-flagged/dangerous types
+; are still blocked. See README.md for the stricter 3 = BlockAllDownloads alternative.)
+"DownloadRestrictions"=dword:00000002
+; DeveloperToolsAvailability: 2 = DeveloperToolsDisallowed
+"DeveloperToolsAvailability"=dword:00000002
+; InPrivateModeAvailability: 1 = Disabled
+"InPrivateModeAvailability"=dword:00000001
+
+; --- #37: SafeSearch + executable/PUA download blocking ---
+; ForceBingSafeSearch: 2 = BingSafeSearchStrictMode (Edge's default search engine)
+"ForceBingSafeSearch"=dword:00000002
+; ForceGoogleSafeSearch: 1 = true (in case the user switches/visits Google directly)
+"ForceGoogleSafeSearch"=dword:00000001
+; SmartScreenEnabled: 1 = true (baseline phishing/malware protection)
+"SmartScreenEnabled"=dword:00000001
+; SmartScreenPuaEnabled: 1 = true (blocks potentially-unwanted-app downloads)
+"SmartScreenPuaEnabled"=dword:00000001
+
+; --- #38: disable Edge sign-in and profile switching ---
+; BrowserSignin: 0 = Disable (no signing in to a Microsoft/work account)
+"BrowserSignin"=dword:00000000
+; BrowserGuestModeEnabled: 0 = false (no guest browsing profile)
+"BrowserGuestModeEnabled"=dword:00000000
+; BrowserAddProfileEnabled: 0 = false (no creating additional profiles to switch to)
+"BrowserAddProfileEnabled"=dword:00000000
+
+; ExtensionInstallBlocklist is a multi-value LIST policy: one REG_SZ per numbered
+; value under its own subkey. A single "*" entry blocks ALL extensions (no allowlist
+; is configured alongside it, so nothing is exempt).
+[HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Edge\ExtensionInstallBlocklist]
+"1"="*"
