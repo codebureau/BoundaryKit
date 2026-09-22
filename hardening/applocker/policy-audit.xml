@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  BoundaryKit - AppLocker policy (AUDIT MODE)
+  GitHub: issue #29 "AppLocker" (sub-issues #30-#34)
+  ADR:    docs/adr/0001-mvp1-scope-and-critical-path.md (MVP1 critical path step 6)
+
+  WHAT THIS IS
+  ============
+  A native AppLocker policy, in the format Set-AppLockerPolicy / secpol.msc import,
+  for a standalone (non-domain) Windows 11 Pro machine with:
+    - a parent account in BUILTIN\Administrators (S-1-5-32-544, a well-known SID -
+      no placeholder needed, works on any Windows install), and
+    - a non-admin local child account that is a member of a local group referred to
+      throughout this policy by the placeholder token %%CHILD_GROUP_SID%%.
+
+  ASSUMPTION - READ BEFORE IMPORTING
+  ===================================
+  GitHub issue #15 "Account structure" is not done yet, so no real child account/group
+  exists to resolve a SID against. This file therefore ships with the group SID left as
+  the literal placeholder string %%CHILD_GROUP_SID%% wherever a rule needs to be scoped
+  to the child. Importing this file AS-IS will fail (Set-AppLockerPolicy will reject an
+  invalid SID) - that is intentional: it fails loudly instead of silently applying a rule
+  to nobody or to everybody. Run scripts/Prepare-AppLockerPolicy.ps1 first; see
+  hardening/applocker/README.md for the full procedure, including the local group name
+  this assumes (BoundaryKit-Child) and how to change it if #15 lands with a different name.
+
+  DESIGN, IN BRIEF (see README.md for the full reasoning)
+  =========================================================
+  - Exe:    default-deny. Administrators + SYSTEM unrestricted. Child gets a narrow
+            allow-list: approved folders (Program Files, Program Files (x86), Windows)
+            AND approved publishers (Microsoft-signed), with explicit Deny rules carving
+            out the user-writable subfolders inside those broad allows (Temp, Tasks,
+            spool\drivers\color, and the user's own Downloads/AppData) - a broad folder
+            allow without these carve-outs is a well-known AppLocker bypass vector.
+  - Msi:    default-deny for the child, empty allow-list scaffold (no rule configured -
+            Matt confirmed 2026-09-22 no specific installer is needed yet; a template is
+            in the collection to extend later). Only Administrators + SYSTEM (Windows
+            Installer service) can run MSI packages until then.
+  - Script: default-deny for the child (ps1/vbs/js/bat/cmd - all one AppLocker "Script"
+            collection), same empty-scaffold treatment as Msi - defense-in-depth alongside
+            the GPO pass disabling CMD/PowerShell outright for the child.
+  - Dll and Appx collections are present (required for a well-formed policy import) but
+    left NotConfigured/empty - out of scope for issue #29's sub-issues, and Appx is moot
+    while Microsoft Store access is disabled per README. Revisit as its own issue if
+    needed.
+  - EnforcementMode="AuditOnly" on every configured collection: per CLAUDE.md's rollback
+    rule and issue #29/#34, this must run in audit mode first, get reviewed against the
+    real AppLocker event log, and only then be flipped to "Enabled" per collection. See
+    README.md for the review + flip procedure and the full rollback path.
+-->
+<AppLockerPolicy Version="1">
+
+  <!-- ================= EXE: default-deny, folder + publisher allow-list ================= -->
+  <RuleCollection Type="Exe" EnforcementMode="AuditOnly">
+
+    <!-- Parent admin is never restricted by this policy, in any collection. This is the
+         in-policy rollback guarantee: whatever else is misconfigured, BUILTIN\Administrators
+         (S-1-5-32-544) always has an unconditional Allow-all rule. -->
+    <FilePathRule Id="B0F2064B-0AEB-4ED4-8704-9FBB06E7FC7A" Name="[Admin] Allow all EXE" Description="Parent admin account must never be locked out by this policy." UserOrGroupSid="S-1-5-32-544" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="*" />
+      </Conditions>
+    </FilePathRule>
+
+    <!-- LOCAL SYSTEM: Windows Update, servicing stack, and many scheduled/maintenance
+         tasks run as SYSTEM. Without this, audit-mode logs will fill with SYSTEM-context
+         "would have been blocked" noise that has nothing to do with the child. -->
+    <FilePathRule Id="CC1350F0-6FDF-4838-8D80-0CB50F21B006" Name="[System] Allow all EXE" Description="Windows servicing/maintenance runs as SYSTEM; do not audit-flag normal OS operation." UserOrGroupSid="S-1-5-18" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="*" />
+      </Conditions>
+    </FilePathRule>
+
+    <!-- Child: approved-folder allow-list (issue #32). PLACEHOLDER FOLDERS - Matt: review
+         and extend for whatever legitimate apps the child actually needs (see README). -->
+    <FilePathRule Id="A17D2695-AEF5-47BD-9802-23CA6DFF1F29" Name="[Child] Allow EXE in Program Files" Description="Approved-folder allow-list placeholder. Extend as needed." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="%PROGRAMFILES%\*" />
+      </Conditions>
+    </FilePathRule>
+    <FilePathRule Id="C0BB5FB5-6275-4345-8A62-0C4B463CCE4B" Name="[Child] Allow EXE in Program Files (x86)" Description="Approved-folder allow-list placeholder. Extend as needed." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="%OSDRIVE%\Program Files (x86)\*" />
+      </Conditions>
+    </FilePathRule>
+    <FilePathRule Id="F9A0F82F-2A24-41D4-B847-28E0F3961A26" Name="[Child] Allow EXE in Windows folder" Description="Approved-folder allow-list placeholder. Needed for built-in Windows tools/apps." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="%WINDIR%\*" />
+      </Conditions>
+    </FilePathRule>
+
+    <!-- Child: approved-publisher allow-list (issue #33). Microsoft-signed placeholder -
+         covers Microsoft-published binaries wherever they happen to be installed (e.g.
+         delivered via Windows Update outside the folders above). Matt: add further
+         Publisher rules here, one per legitimate vendor/app, using the same pattern -
+         see the commented template at the bottom of this collection. -->
+    <FilePublisherRule Id="55DD72ED-D0D7-4660-B7F7-ECB36B82D7ED" Name="[Child] Allow Microsoft-signed EXE" Description="Approved-publisher allow-list placeholder: any Microsoft-signed binary, any product/version." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Allow">
+      <Conditions>
+        <FilePublisherCondition PublisherName="O=MICROSOFT CORPORATION, L=REDMOND, S=WASHINGTON, C=US" ProductName="*" BinaryName="*">
+          <BinaryVersionRange LowSection="*" HighSection="*" />
+        </FilePublisherCondition>
+      </Conditions>
+    </FilePublisherRule>
+
+    <!-- Deny carve-outs: the folder allows above are broad, and several subfolders inside
+         "Program Files" and "Windows" are user-writable and are a documented AppLocker
+         bypass vector (drop a payload there, it now matches the folder Allow rule). Deny
+         always wins over Allow in AppLocker, regardless of rule order, so these close that
+         gap for the child specifically. Administrators are unaffected (their Allow rule
+         above is a separate, unrestricted grant). -->
+    <FilePathRule Id="D610E8EA-78D1-479F-962E-6FE8167550BD" Name="[Child] Deny EXE in Windows\Temp" Description="User-writable subfolder under an otherwise-approved folder." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Deny">
+      <Conditions>
+        <FilePathCondition Path="%WINDIR%\Temp\*" />
+      </Conditions>
+    </FilePathRule>
+    <FilePathRule Id="DB637741-712A-486F-B412-0162A5D1A281" Name="[Child] Deny EXE in Windows\Tasks" Description="User-writable subfolder under an otherwise-approved folder." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Deny">
+      <Conditions>
+        <FilePathCondition Path="%WINDIR%\Tasks\*" />
+      </Conditions>
+    </FilePathRule>
+    <FilePathRule Id="DE168B7A-F584-4790-9A5F-60173123AEC4" Name="[Child] Deny EXE in spool\drivers\color" Description="Classic world-writable Windows subfolder used in known AppLocker bypasses." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Deny">
+      <Conditions>
+        <FilePathCondition Path="%WINDIR%\System32\spool\drivers\color\*" />
+      </Conditions>
+    </FilePathRule>
+    <FilePathRule Id="80377974-E269-49F2-9F3C-FBDF9233D659" Name="[Child] Deny EXE in user Temp/Downloads/AppData" Description="Anywhere the browser or an archive tool can drop a downloaded file must never be an execute-allowed path, regardless of the folder allow-list above." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Deny">
+      <Conditions>
+        <FilePathCondition Path="%OSDRIVE%\Users\*\AppData\*" />
+      </Conditions>
+    </FilePathRule>
+    <FilePathRule Id="78320F1B-4FBA-4C34-8905-E05DC661017C" Name="[Child] Deny EXE in user profile (Downloads/Desktop/Documents)" Description="Default download/save locations must never be execute-allowed for the child." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Deny">
+      <Conditions>
+        <FilePathCondition Path="%OSDRIVE%\Users\*\Downloads\*" />
+      </Conditions>
+    </FilePathRule>
+
+    <!--
+      TEMPLATE - copy/paste this block to allow one more legitimate app for the child,
+      once you know what it needs (a specific game, launcher, etc.). Prefer a
+      FilePublisherRule (survives updates) over a FilePathRule (breaks if the app moves)
+      when the app is signed. Give it its own Id (new GUID) and a description that says
+      why it's there.
+
+      <FilePublisherRule Id="<NEW-GUID>" Name="[Child] Allow <App Name>" Description="Approved <date>: <why>." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Allow">
+        <Conditions>
+          <FilePublisherCondition PublisherName="O=<VENDOR NAME>, L=<CITY>, S=<STATE>, C=<COUNTRY>" ProductName="*" BinaryName="*">
+            <BinaryVersionRange LowSection="*" HighSection="*" />
+          </FilePublisherCondition>
+        </Conditions>
+      </FilePublisherRule>
+    -->
+
+  </RuleCollection>
+
+  <!-- ================= MSI: default-deny, no child allow-list ================= -->
+  <RuleCollection Type="Msi" EnforcementMode="AuditOnly">
+    <FilePathRule Id="27A80F1C-C14A-4D9F-B730-7F385EC8BEAE" Name="[Admin] Allow all MSI" Description="Parent admin account must never be locked out by this policy." UserOrGroupSid="S-1-5-32-544" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="*" />
+      </Conditions>
+    </FilePathRule>
+    <FilePathRule Id="59CF6585-1CAF-4024-9DDA-15A9249F74D3" Name="[System] Allow all MSI" Description="Windows Installer service and update packages run as SYSTEM." UserOrGroupSid="S-1-5-18" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="*" />
+      </Conditions>
+    </FilePathRule>
+    <!-- No child rule configured yet: default-deny for the child. Matt confirmed 2026-09-22
+         (MVP1 hardening artifact review) that no specific installer is needed right now -
+         this is an empty scaffold, not a decision that MSI stays permanently unreachable.
+         Copy the TEMPLATE below once a real need shows up. -->
+
+    <!--
+      TEMPLATE - copy/paste to allow one specific installer for the child, once you know
+      what it is. Prefer FilePublisherRule (survives updates) over FilePathRule when the
+      installer is signed. Give it its own Id (new GUID) and say why it's there.
+
+      <FilePublisherRule Id="<NEW-GUID>" Name="[Child] Allow <Installer Name>" Description="Approved <date>: <why>." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Allow">
+        <Conditions>
+          <FilePublisherCondition PublisherName="O=<VENDOR NAME>, L=<CITY>, S=<STATE>, C=<COUNTRY>" ProductName="*" BinaryName="*">
+            <BinaryVersionRange LowSection="*" HighSection="*" />
+          </FilePublisherCondition>
+        </Conditions>
+      </FilePublisherRule>
+    -->
+  </RuleCollection>
+
+  <!-- ================= SCRIPT: ps1/vbs/js/bat/cmd - default-deny, no child allow-list ================= -->
+  <RuleCollection Type="Script" EnforcementMode="AuditOnly">
+    <FilePathRule Id="D4DAE8CF-086A-408B-9104-CEDEE4691745" Name="[Admin] Allow all scripts" Description="Parent admin account must never be locked out by this policy." UserOrGroupSid="S-1-5-32-544" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="*" />
+      </Conditions>
+    </FilePathRule>
+    <FilePathRule Id="29E94568-FD0C-4BD6-AF22-74CAA562EFC5" Name="[System] Allow all scripts" Description="Some scheduled/maintenance tasks run scripts as SYSTEM." UserOrGroupSid="S-1-5-18" Action="Allow">
+      <Conditions>
+        <FilePathCondition Path="*" />
+      </Conditions>
+    </FilePathRule>
+    <!-- No child rule configured yet: default-deny for the child, defense-in-depth alongside
+         the GPO pass disabling CMD/PowerShell entirely. Matt confirmed 2026-09-22 (MVP1
+         hardening artifact review) that no specific script is needed right now - this is an
+         empty scaffold, e.g. for scripts built together as part of the collaborative-learning
+         goal later, not a decision that Script stays permanently unreachable. Copy the
+         TEMPLATE below once a real need shows up. Prefer a narrow, specific FilePathRule
+         (e.g. one approved folder for scripts you write together) over a publisher rule,
+         since ad-hoc/self-written scripts are normally unsigned. -->
+
+    <!--
+      TEMPLATE - copy/paste to allow scripts from one specific, controlled location (e.g.
+      a folder the child can't write to unsupervised) once a real need shows up. Give it
+      its own Id (new GUID) and say why it's there.
+
+      <FilePathRule Id="<NEW-GUID>" Name="[Child] Allow scripts in <folder>" Description="Approved <date>: <why>." UserOrGroupSid="%%CHILD_GROUP_SID%%" Action="Allow">
+        <Conditions>
+          <FilePathCondition Path="<absolute path>\*" />
+        </Conditions>
+      </FilePathRule>
+    -->
+  </RuleCollection>
+
+  <!-- ================= DLL and APPX: present for a well-formed policy, not configured =================
+       Out of scope for issue #29's sub-issues (#30-#34 cover exe/msi/script/folders/publishers
+       only). Appx is moot while Microsoft Store access is disabled per README. Revisit as a
+       separate issue if a real need shows up. -->
+  <RuleCollection Type="Dll" EnforcementMode="NotConfigured" />
+  <RuleCollection Type="Appx" EnforcementMode="NotConfigured" />
+
+</AppLockerPolicy>
