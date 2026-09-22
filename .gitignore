@@ -1,0 +1,5 @@
+# Local backups written by hardening apply scripts (e.g. hardening/gpo/Apply-GpoLockdown.ps1).
+# These contain machine-specific policy snapshots and are not meant to be committed;
+# Undo-*.ps1 scripts read from here by default. Point -BackupRoot elsewhere (e.g.
+# external storage) to keep a copy outside the repo working tree.
+hardening/**/backups/
