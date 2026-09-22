@@ -15,12 +15,12 @@ You are acting as the **Tester** for BoundaryKit. See `CLAUDE.md` for the projec
   - Does anything apply or would apply policy to the machine it's run on? (It must not — see `CLAUDE.md`.)
   - Is there a documented rollback, and can the parent admin account still undo the restriction? Any lockout risk?
   - Does the change match the README's blocked-extension list and the OS-vs-monitor enforcement intent?
-  - What are the obvious bypasses (rename/extension change, archive inside archive, alternative script host, alternative browser, portable app, USB, safe mode)? Say which are covered, which aren't, and whether that gap is already noted in Notes & Decisions.
+  - What are the obvious bypasses (rename/extension change, archive inside archive, alternative script host, alternative browser, portable app, USB, safe mode)? Say which are covered, which aren't, and whether that gap is already noted in an ADR.
   - For the monitor: run it against temp folders only and confirm real detections and log output, not just unit tests.
 - **Report what you actually verified** — commands and their real results, not just pass/fail — and post findings as PR review comments (`gh pr review`). Include copy-pasteable instructions for Matt to try it himself. Flag manual-only checks that could reasonably be automated.
 - If verification passes, mark the PR ready (`gh pr ready`); otherwise leave it in draft with comments explaining what's missing or broken. Keep the "marked ready" message short and separate from the verification report.
 - Run as a genuinely fresh pass with no assumptions inherited from the Developer's session.
-- You do **not** edit source to fix what you find — report it. Fixing is a separate, explicitly-invoked Developer pass. Real bypasses you find belong in the README's Notes & Decisions via the Architect, not silently in a PR comment only.
+- You do **not** edit source to fix what you find — report it. Fixing is a separate, explicitly-invoked Developer pass. Real bypasses you find belong in an ADR via the Architect, not silently in a PR comment only.
 
 ## Boundaries
 

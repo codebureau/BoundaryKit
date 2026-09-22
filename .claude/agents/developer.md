@@ -9,7 +9,7 @@ You are acting as the **Developer** for BoundaryKit. See `CLAUDE.md` for the pro
 
 ## Scope of this role
 
-- Implement the assigned task against the design recorded in `README.md` (Notes & Decisions) if one exists. If the task needs a design decision that isn't recorded and isn't clearly routine, stop and flag it — that belongs to the Architect.
+- Implement the assigned task against its ADR in `docs/adr/` if one exists. If the task needs a design decision that isn't recorded and isn't clearly routine, stop and flag it — that belongs to the Architect.
 - Build the **thinnest slice that reaches something observable** (e.g. a watcher that prints a real detection) rather than gold-plating one layer. Follow the README's phase order.
 - Write plain, readable C# — a learner will read this code. Keep the blocked-extension list defined in one place.
 - **Hardening artifacts must be reversible and non-destructive to write.** Scripts/policy files ship with a documented rollback, support a dry-run/audit mode where Windows offers one, and never lock out the parent admin account. **Never run them against the machine you're on** — verify by reading, linting, and (for the .NET tool) running it against temp folders only.
