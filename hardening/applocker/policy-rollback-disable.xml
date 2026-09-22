@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  BoundaryKit - AppLocker ROLLBACK policy
+
+  WHAT THIS IS
+  ============
+  The "undo everything" policy for hardening/applocker/policy-audit.xml. Every rule
+  collection is set to EnforcementMode="NotConfigured" with no rules in it, which is
+  AppLocker's "no restriction from this policy" state - functionally equivalent to
+  AppLocker never having been configured on this machine.
+
+  WHEN TO USE THIS
+  ================
+  - Something legitimate got locked out and it can't wait for a rule fix (see
+    hardening/applocker/README.md's "Rollback" section for the full decision tree -
+    there is also a faster, more surgical option: flip only the affected collection back
+    to AuditOnly instead of nuking the whole policy).
+  - You want to fully back out of AppLocker for this machine, e.g. to re-baseline from
+    scratch.
+
+  HOW TO APPLY (as the parent admin, elevated PowerShell)
+  =========================================================
+    Set-AppLockerPolicy -XmlPolicy .\policy-rollback-disable.xml
+
+  This REPLACES the currently applied policy outright (no -Merge), which is exactly what
+  a rollback needs - it must not merge with whatever's currently applied. This does not
+  touch Local Group Policy settings from the separate GPO-lockdown work (issue elsewhere
+  in this milestone); it only clears AppLocker's own rule collections.
+
+  Note: this only clears rules pushed via Set-AppLockerPolicy on THIS local machine. It
+  is not a domain GPO, so there is nothing further to unlink. If AppLocker rules were
+  ever also configured via Local Group Policy Editor (gpedit.msc) directly instead of (or
+  in addition to) Set-AppLockerPolicy, clear them there too: Local Computer Policy >
+  Computer Configuration > Windows Settings > Security Settings > Application Control
+  Policies > AppLocker > right-click each rule collection > "Delete all rules...".
+
+  The parent admin account is never affected by policy-audit.xml either way (every
+  collection there has an explicit, unconditional Allow-all rule for
+  BUILTIN\Administrators, S-1-5-32-544) - this rollback file exists for the child's
+  experience and for anything else that got wrongly caught, not as an emergency
+  admin-access fix.
+-->
+<AppLockerPolicy Version="1">
+  <RuleCollection Type="Exe" EnforcementMode="NotConfigured" />
+  <RuleCollection Type="Msi" EnforcementMode="NotConfigured" />
+  <RuleCollection Type="Script" EnforcementMode="NotConfigured" />
+  <RuleCollection Type="Dll" EnforcementMode="NotConfigured" />
+  <RuleCollection Type="Appx" EnforcementMode="NotConfigured" />
+</AppLockerPolicy>
